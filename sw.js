@@ -1,7 +1,7 @@
 /* LAVÉA Laundry POS - offline support.
    Saves the app on the device so it opens without internet.
    Supabase / any other data requests are never touched: they always go straight to the network. */
-const VER = 'lavea-pos-v2';
+const VER = 'lavea-pos-v3';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'maskable-512.png', 'apple-touch-icon.png'];
 const LIBS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com']; // PDF libraries + fonts
 
