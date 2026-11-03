@@ -1,12 +1,12 @@
 /* LAVÉA Laundry POS - offline support.
    Saves the app on the device so it opens without internet.
    Supabase / any other data requests are never touched: they always go straight to the network. */
-const VER = 'lavea-pos-v1';
+const VER = 'lavea-pos-v2';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'maskable-512.png', 'apple-touch-icon.png'];
 const LIBS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com']; // PDF libraries + fonts
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VER).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VER).then(c => Promise.all(SHELL.map(u => fetch(new Request(u, { cache: 'reload' })).then(r => { if (!r.ok) throw new Error(u); return c.put(u, r); })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -31,7 +31,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       new Promise(resolve => {
         const t = setTimeout(() => caches.match('index.html').then(r => r && resolve(r)), 4000);
-        fetch(req).then(res => { clearTimeout(t); keep(new Request('index.html'), res.clone()); resolve(res); })
+        fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => { clearTimeout(t); keep(new Request('index.html'), res.clone()); resolve(res); })
           .catch(() => { clearTimeout(t); caches.match('index.html').then(r => resolve(r || Response.error())); });
       })
     );
@@ -42,7 +42,7 @@ self.addEventListener('fetch', e => {
   if (url.origin === location.origin) {
     e.respondWith(
       caches.match(req).then(hit => {
-        const net = fetch(req).then(res => keep(req, res)).catch(() => hit);
+        const net = fetch(req.url, { cache: 'no-cache' }).then(res => keep(req, res)).catch(() => hit);
         return hit || net;
       })
     );
