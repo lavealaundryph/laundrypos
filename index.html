@@ -355,12 +355,12 @@ const ui={view:'pos',navOpen:false,loginErr:'',
   prd:{q:'',cat:'all',sort:'name'},
   svc:{q:''}, rep:{q:''}, cus:{q:''},
   exp:{q:'',P:{p:'all',year:new Date().getFullYear(),from:'',to:''}},
-  xf:{q:''},
+  xf:{q:''},loan:{q:'',P:{p:'all',year:new Date().getFullYear(),from:'',to:''}},
   wf:{q:'',P:{p:'month',year:new Date().getFullYear(),from:'',to:''}},
   pty:{q:'',P:{p:'month',year:new Date().getFullYear(),from:'',to:''}},
   rpt:{mode:'daily',date:'',month:'',tab:'is'}};
 const METHODS=['Cash','GCash','Maya','Bank Transfer','Other'];
-const ACCOUNTS=['Gas and Fuel','Utilities','Repairs and Maintenance','Merchandise Inventory','Salaries and Wages','Rent','Supplies','Tax Remittance','Other'];
+const ACCOUNTS=['Gas and Fuel','Utilities','Repairs and Maintenance','Merchandise Inventory','Salaries and Wages','Rent','Supplies','Tax Remittance','Interest Expense','Other'];
 const STATUSES=['Received','Processing','Ready','Completed','Cancelled'];
 const COLORS=['#e5484d','#4f46e5','#45e0c4','#d6e03b','#e046c8','#4338ca','#40e0d0','#6ee74a','#3de080','#2563eb','#f59e0b','#0ea5e9'];
 
@@ -499,9 +499,9 @@ function formModal(title,name,id,body,saveLabel,wide){
   const d=openModal(`<form data-form="${name}" data-id="${esc(id||'')}" autocomplete="off"><div class="mh"><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-act="closeModal" aria-label="Close">${ic('x')}</button></div><div class="mb">${body}</div><div class="mf"><button type="button" class="btn" data-act="closeModal">Cancel</button><button type="submit" class="btn pri">${esc(saveLabel||'Save')}</button></div></form>`,wide);return d}
 
 /* ============ shell ============ */
-const NAV=[['pos','POS','pos'],['dashboard','Dashboard','dash'],['orders','Orders','orders'],['products','Products','products'],['services','Services','services'],['replenishments','Replenishments','repl'],['expenses','Expenses','expenses'],['wfund','Working Fund','cash'],['petty','Petty Cash','expenses'],['xfer','Cash Transfer','xfer'],['reports','Reports','reports'],['customers','Customer Registry','customers'],['settings','Settings & Profile','settings']];
-const ADMIN_ONLY=['expenses','replenishments','settings','products','services','reports'];
-const TITLES={pos:'Point of Sale',dashboard:'Dashboard Analytics',orders:'Orders',products:'Products',services:'Services',replenishments:'Replenishments Ledger',expenses:'Expense Ledger',wfund:'Working Fund Book',petty:'Petty Cash Book',xfer:'Cash Transfer · End of Day',reports:'Reports',customers:'Customer Registry Database',settings:'Settings & Profile'};
+const NAV=[['pos','POS','pos'],['dashboard','Dashboard','dash'],['orders','Orders','orders'],['products','Products','products'],['services','Services','services'],['replenishments','Replenishments','repl'],['expenses','Expenses','expenses'],['loans','Loans Payable','bank'],['wfund','Working Fund','cash'],['petty','Petty Cash','expenses'],['xfer','Cash Transfer','xfer'],['reports','Reports','reports'],['customers','Customer Registry','customers'],['settings','Settings & Profile','settings']];
+const ADMIN_ONLY=['expenses','loans','replenishments','settings','products','services','reports'];
+const TITLES={pos:'Point of Sale',dashboard:'Dashboard Analytics',orders:'Orders',products:'Products',services:'Services',replenishments:'Replenishments Ledger',expenses:'Expense Ledger',loans:'Loans Payable',wfund:'Working Fund Book',petty:'Petty Cash Book',xfer:'Cash Transfer · End of Day',reports:'Reports',customers:'Customer Registry Database',settings:'Settings & Profile'};
 const V={};
 function render(){
   const root=$('#root');
@@ -521,7 +521,7 @@ function render(){
     <main class="content" id="content"><div class="wrap">${V[ui.view].html()}</div></main></div></div>`;
 }
 function refreshList(){const el=$('#list');if(el&&V[ui.view].list)el.innerHTML=V[ui.view].list()}
-const APP_VER='2026-11-04.1';
+const APP_VER='2026-11-26.1';
 /* ---- typed customer name with registry suggestions ---- */
 function custMatches(q){q=String(q||'').trim().toLowerCase();if(!q)return [];const qd=q.replace(/\D/g,'');
   return S.customers.map(c=>{const n=String(c.name||'').toLowerCase();let s=-1;
@@ -818,14 +818,15 @@ V.expenses={
   <div class="card"><div class="tablebox" style="max-height:620px;overflow:auto"><table style="min-width:900px"><thead><tr><th>Date</th><th>Particulars / Description</th><th>SI/OR #</th><th>Account</th><th>Source</th><th class="r">Amount</th><th>Actions</th></tr></thead><tbody id="list">${this.list()}</tbody></table></div></div>`},
  list(){const l=filteredExp();if(!l.length)return '<tr><td colspan="7" class="empty">No expenses in this period.</td></tr>';
   return l.map(e=>{const man=e.source==='Manual';const sp=e.source==='Replenishment'?'info':e.source==='Opening Stock'?'acc':'mute';
-   return `<tr><td class="muted">${fmtD(e.date)}</td><td><b>${esc(e.desc)}</b><div class="small muted">By ${esc(op(e.by)?op(e.by).name:'—')}</div></td><td class="mono">${esc(e.ref||'—')}</td><td><span class="chip">${esc(e.account)}</span></td><td><span class="pill ${sp}">${esc(e.source)}</span></td>
+   return `<tr><td class="muted">${fmtD(e.date)}</td><td><b>${esc(e.desc)}</b><div class="small muted">By ${esc(op(e.by)?op(e.by).name:'—')}</div></td><td class="mono">${esc(e.ref||'—')}</td><td><span class="chip">${esc(e.account)}</span></td><td><span class="pill ${sp}">${esc(e.source)}</span>${loansList().some(x=>x.expenseId===e.id&&x.type==='adv')?' <span class="pill acc">Paid by lender</span>':''}</td>
    <td class="r num bold t-bad">${peso(e.amount)}</td><td><div class="row" style="gap:6px;flex-wrap:nowrap">${man?`<button class="icon-btn acc" data-act="editExpense" data-id="${e.id}" aria-label="Edit">${ic('edit')}</button>`:''}<button class="icon-btn dng" data-act="delExpense" data-id="${e.id}" aria-label="Delete">${ic('trash')}</button></div></td></tr>`}).join('')}
 };
 function expForm(id){
   const e=id?S.expenses.find(x=>x.id===id):{date:dkey(new Date()),desc:'',ref:'',account:'Utilities',amount:''};
   formModal(id?'Edit expense':'Add expense','exp',id,`${fld('Particulars / description',`<input name="desc" required value="${esc(e.desc)}">`)}
    <div class="grid2">${fld('Date',`<input name="date" type="date" required value="${esc(e.date)}">`)}${fld('Amount ('+sym()+')',`<input name="amount" type="number" step="0.01" min="0.01" required value="${esc(e.amount)}">`)}</div>
-   <div class="grid2">${fld('Account',`<select name="account">${selOpts(ACCOUNTS,e.account)}</select>`)}${fld('SI/OR # <span>(optional)</span>',`<input name="ref" value="${esc(e.ref)}">`)}</div>`)}
+   <div class="grid2">${fld('Account',`<select name="account">${selOpts(ACCOUNTS,e.account)}</select>`)}${fld('SI/OR # <span>(optional)</span>',`<input name="ref" value="${esc(e.ref)}">`)}</div>
+   ${fld('Paid from',`<select name="paidBy">${selOpts([['shop','Shop cash'],['lender','Paid directly by the lender (adds to Loans Payable)']],id&&loansList().some(l=>l.expenseId===id&&l.type==='adv')?'lender':'shop')}</select>`)}`)}
 
 /* ============ Replenishments ============ */
 V.replenishments={
@@ -840,7 +841,7 @@ function replForm(){
   const p0=S.products[0];
   formModal('Log stock replenishment','repl','',`${fld('Item stocked',`<select name="productId" id="rp">${selOpts(S.products.map(p=>[p.id,p.name]),p0.id)}</select>`)}${fld('Supplier / partner',`<input name="supplier" required placeholder="e.g. Breeze Distribution Marketing">`)}
    <div class="grid3">${fld('Quantity',`<input name="qty" type="number" min="1" step="1" required value="10">`)}${fld('Unit cost ('+sym()+')',`<input name="unit" type="number" min="0" step="0.01" required value="${p0.cost}">`)}${fld('Date',`<input name="date" type="date" required value="${dkey(new Date())}">`)}</div>
-   <div class="small muted">Stock is added to the product and the total is recorded as a Merchandise Inventory expense.</div>`,'Log replenishment')}
+   ${fld('Paid from',`<select name="paidBy">${selOpts([['shop','Shop cash'],['lender','Paid directly by the lender (adds to Loans Payable)']],'shop')}</select>`)}<div class="small muted">Stock is added to the product and the total is recorded as a Merchandise Inventory expense.</div>`,'Log replenishment')}
 
 /* ============ Customers ============ */
 V.customers={
@@ -926,7 +927,8 @@ function agg(from,to){
   S.orders.forEach(o=>o.payments.forEach(p=>{const k=dOf(p.date);if(k<from||k>to)return;col[p.method]=r2((col[p.method]||0)+p.amount);colAll+=p.amount;if(o.status==='Cancelled')colCancelled+=p.amount}));
   colAll=r2(colAll);colCancelled=r2(colCancelled);
   const net=r2(gross-disc);
-  return {ords,rev,gross,disc,net,tax,exp,byAcct,opex,expAll,remit,col,colAll,colCancelled,ni:r2(net-opex)}}
+  const lo=loanAgg(from,to);
+  return {ords,rev,gross,disc,net,tax,exp,byAcct,opex,expAll,remit,col,colAll,colCancelled,ni:r2(net-opex),lIn:lo.cashIn,lAsset:lo.asset,lPrin:lo.prin,lInt:lo.int}}
 function arAsOf(asof){
   let t=0;const list=[];
   S.orders.forEach(o=>{if(o.status==='Cancelled'||dOf(o.created)>asof)return;
@@ -937,8 +939,8 @@ function position(asof){
   const c0=agg('0000-00-00',asof),K=carryAt(asof);
   const c={...c0,net:r2(c0.net+K.net),tax:r2(c0.tax+K.tax),colAll:r2(c0.colAll+K.colAll),colCancelled:r2(c0.colCancelled+K.colCancelled),expAll:r2(c0.expAll+K.expAll),remit:r2(c0.remit+K.remit),opex:r2(c0.opex+K.opex)};c.ni=r2(c.net-c.opex);
   const capital=r2((Number(S.business.openingCapital)||0)+fundOwner('0000-00-00',asof)+K.fundOwner);
-  const cash=r2(capital+c.colAll-c.expAll);const ar=arAsOf(asof);const taxPay=r2(c.tax-c.remit);const re=r2(c.net-c.opex);
-  return {c,capital,cash,ar,taxPay,canc:c.colCancelled,re,assets:r2(cash+ar.total),le:r2(taxPay+c.colCancelled+capital+re)}}
+  const LA=loanAggC(asof);const loanBal=r2(LA.adv-LA.prin);const cash=r2(capital+c.colAll-c.expAll+LA.cashIn-LA.prin);const ar=arAsOf(asof);const taxPay=r2(c.tax-c.remit);const re=r2(c.net-c.opex);
+  return {c,capital,cash,ar,taxPay,canc:c.colCancelled,re,loanBal,lAsset:LA.asset,assets:r2(cash+ar.total+LA.asset),le:r2(taxPay+c.colCancelled+loanBal+capital+re)}}
 const R=(c,s,i)=>({c,s,i});
 const keysOf=(x,y)=>[...new Set([...Object.keys(x),...Object.keys(y)])].sort();
 const pct=(n,d)=>d?(n/d*100).toFixed(1)+'%':'-';
@@ -965,11 +967,13 @@ function modelBS(ym){
   rows.push(R(['Assets',''],'h'));
   rows.push(R(['Cash and e-wallets',p.cash],'',1));
   rows.push(R(['Accounts receivable (unpaid orders)',p.ar.total],'',1));
+  if(p.lAsset)rows.push(R(['Equipment and fixtures funded by lender (at cost)',p.lAsset],'',1));
   rows.push(R(['Total assets',p.assets],'sub'));
   rows.push(R(['Liabilities',''],'h'));
   rows.push(R(['Output tax payable',p.taxPay],'',1));
   rows.push(R(['Payments held on cancelled orders',p.canc],'',1));
-  rows.push(R(['Total liabilities',r2(p.taxPay+p.canc)],'sub'));
+  if(p.loanBal||loansList().length)rows.push(R(['Loans payable',p.loanBal],'',1));
+  rows.push(R(['Total liabilities',r2(p.taxPay+p.canc+p.loanBal)],'sub'));
   rows.push(R(["Owner's equity",''],'h'));
   rows.push(R(["Owner's capital (opening balance and working fund)",p.capital],'',1));
   rows.push(R(['Retained earnings (cumulative)',p.re],'',1));
@@ -978,6 +982,7 @@ function modelBS(ym){
   const inv=r2(S.products.reduce((a,x)=>a+x.stock*x.cost,0));const notes=[];
   notes.push(Math.abs(p.assets-p.le)<0.01?'Check: assets equal liabilities plus equity.':'Check: the sheet is out of balance by '+fmtCell(r2(p.assets-p.le),'html')+'. Review recent edits or deleted records.');
   notes.push('Memo: materials and supplies on hand are valued at '+fmtCell(inv,'pdf').replace('PHP ','PHP ')+' at current cost (as of today). They are expensed when purchased, so they are not shown as an asset.');
+  {const K=S.business.loanCarry;if(K&&mi.to<K.cut)notes.push('Loan records up to '+fmtD(K.cut)+' were closed out and cleared, so statements before that date no longer show the loan and may not balance.')}
   if(p.cash<0)notes.push('Cash is negative. Set the opening cash or owner’s capital under Settings & Profile so purchases made before the first sale are funded.');
   return {sub:'As of '+fmtD(mi.to),head:['','Amount'],align:['l','r'],rows,notes}}
 function modelCF(ym){
@@ -994,7 +999,10 @@ function modelCF(ym){
   rows.push(R(['Net cash from operating activities',net],'sub'));
   const contrib=fundOwner(mi.from,mi.to);
   rows.push(R(['Owner’s working fund contributions',contrib],'',1));
-  rows.push(R(['NET INCREASE (DECREASE) IN CASH',r2(net+contrib)],'tot'));
+  const fin=loanAgg(mi.from,mi.to);
+  if(fin.cashIn)rows.push(R(['Loans received from lender',fin.cashIn],'',1));
+  if(fin.prin)rows.push(R(['Loan principal repaid',-fin.prin],'',1));
+  rows.push(R(['NET INCREASE (DECREASE) IN CASH',r2(net+contrib+fin.cashIn-fin.prin)],'tot'));
   rows.push(R(['Cash at beginning of month',ps.cash],'',1));
   rows.push(R(['Cash at end of month',pe.cash],'sub'));
   const dAR=r2(pe.ar.total-ps.ar.total),dTax=r2(pe.taxPay-ps.taxPay),dCanc=r2(pe.canc-ps.canc);
@@ -1018,14 +1026,14 @@ function modelAR(ym){
   return [{sub:'As of '+fmtD(asof),head:['Age','Orders','Balance'],align:['l','r','r'],rows:sum},
     {h:'Unpaid orders',head:['Order #','Customer','Date','Total','Paid','Balance','Age (days)'],align:['l','l','l','r','r','r','r'],rows:det}]}
 function modelDays(ym){
-  const mi=monthInfo(ym);const rows=[];const T={n:0,net:0,tax:0,col:0,exp:0};
+  const mi=monthInfo(ym);const rows=[];const T={n:0,net:0,tax:0,col:0,exp:0,nc:0};
   const last=parseD(mi.to).getDate();
   for(let d=1;d<=last;d++){const k=mi.from.slice(0,8)+pad2(d);const a=agg(k,k);
-    if(!a.ords.length&&!a.colAll&&!a.expAll)continue;
-    rows.push(R([fmtD(k),String(a.ords.length),a.net,a.tax,a.colAll,a.expAll,r2(a.colAll-a.expAll)]));
-    T.n+=a.ords.length;T.net+=a.net;T.tax+=a.tax;T.col+=a.colAll;T.exp+=a.expAll}
+    if(!a.ords.length&&!a.colAll&&!a.expAll&&!a.lIn&&!a.lPrin)continue;
+    rows.push(R([fmtD(k),String(a.ords.length),a.net,a.tax,a.colAll,a.expAll,r2(a.colAll-a.expAll+a.lIn-a.lPrin)]));
+    T.n+=a.ords.length;T.net+=a.net;T.tax+=a.tax;T.col+=a.colAll;T.exp+=a.expAll;T.nc+=r2(a.colAll-a.expAll+a.lIn-a.lPrin)}
   if(!rows.length)rows.push(R(['No activity this month','','','','','','']));
-  else rows.push(R(['TOTAL',String(T.n),r2(T.net),r2(T.tax),r2(T.col),r2(T.exp),r2(T.col-T.exp)],'tot'));
+  else rows.push(R(['TOTAL',String(T.n),r2(T.net),r2(T.tax),r2(T.col),r2(T.exp),r2(T.nc)],'tot'));
   return {sub:'For the month of '+mi.label,head:['Date','Orders','Net sales','Tax billed','Collected','Expenses','Net cash'],align:['l','r','r','r','r','r','r'],rows}}
 function modelNotes(){
   const t=['Basis of preparation: these are management reports generated from the sales, payments and expenses recorded in Laundry POS.',
@@ -1033,7 +1041,8 @@ function modelNotes(){
    'Net sales exclude tax and discounts. Output tax payable is the tax billed on orders less any amounts recorded under the Tax Remittance expense account.',
    'Materials and supplies purchased (Merchandise Inventory) are expensed when bought. Stock on hand is disclosed as a memo on the balance sheet, not as an asset.',
    'Cash and e-wallets equal the opening cash balance in Settings & Profile, plus all recorded payments, less all recorded expenses.',
-   'Not tracked: fixed assets, depreciation, loans, supplier payables, owner withdrawals and income tax. Record these as expenses if they apply to you.',
+   'Loans payable are the advances from the lender less the principal repaid. Repaying principal is not an expense; interest is. Equipment and fixtures paid for by the lender are shown at cost and are not depreciated.',
+   'Not tracked: depreciation, supplier payables, owner withdrawals and income tax. Record these as expenses if they apply to you.',
    'These reports are for management use and are not audited. Confirm figures with your accountant before filing with the BIR.'];
   return {head:['Note'],align:['l'],rows:t.map(x=>R([x]))}}
 function monthGroups(ym){return {is:[modelIS(ym)],bs:[modelBS(ym)],cf:modelCF(ym),sce:[modelSCE(ym)],ar:modelAR(ym),days:[modelDays(ym)],notes:[modelNotes()]}}
@@ -1051,7 +1060,9 @@ function dailyModels(date){
   sr.push(R(['Total collected',a.colAll],'sub'),R(['Expenses',''],'h'));
   Object.keys(a.byAcct).sort().forEach(k=>sr.push(R([k,a.byAcct[k]],'',1)));
   if(!a.expAll)sr.push(R(['No expenses recorded',''],'',1));
-  sr.push(R(['Total expenses',a.expAll],'sub'),R(['Day result',''],'h'),R(['NET CASH MOVEMENT (collected less expenses)',r2(a.colAll-a.expAll)],'tot'),
+  sr.push(R(['Total expenses',a.expAll],'sub'));
+  if(a.lIn||a.lPrin){sr.push(R(['Loan',''],'h'));if(a.lIn)sr.push(R(['Advances from lender',a.lIn],'',1));if(a.lPrin)sr.push(R(['Loan principal repaid',-a.lPrin],'',1))}
+  sr.push(R(['Day result',''],'h'),R(['NET CASH MOVEMENT (collected, less expenses, plus loan flows)',r2(a.colAll-a.expAll+a.lIn-a.lPrin)],'tot'),
     R(['Receivables outstanding at end of day',pos.ar.total],'',1),R(['Cash balance at end of day',pos.cash],'',1));
   const tm=s=>new Date(s).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   const sale=orders.map(o=>R([o.no,tm(o.created),custName(o),o.items.map(i=>i.name+' x'+i.qty).join(', '),op(o.cashierId)?op(o.cashierId).name:'-',o.total,o.status==='Cancelled'?'Cancelled':payState(o)==='Partial'?'Partial':payState(o)]));
@@ -1154,7 +1165,7 @@ V.reports={
     return head+`<div class="card pad"><div class="row"><div class="field" style="width:190px"><label for="rd">Report date</label><input id="rd" type="date" data-bind="rpt.date" value="${esc(r.date)}" max="${todayKey()}"></div>
      <div class="chips" style="align-self:flex-end"><button class="chipbtn${r.date===todayKey()?' on':''}" data-act="rptset" data-id="today">Today</button><button class="chipbtn" data-act="rptset" data-id="yesterday">Yesterday</button></div>
      <span class="grow"></span><button class="btn pri" data-act="rptDaily" style="align-self:flex-end">${ic('reports')} Download PDF</button></div></div>
-     <div class="stats">${st('Net sales',a.net,'t-acc')}${st('Collected',a.colAll,'t-good')}${st('Expenses',a.expAll,'t-bad')}${st('Net cash movement',r2(a.colAll-a.expAll),a.colAll>=a.expAll?'t-good':'t-bad')}</div>
+     <div class="stats">${st('Net sales',a.net,'t-acc')}${st('Collected',a.colAll,'t-good')}${st('Expenses',a.expAll,'t-bad')}${st('Net cash movement',r2(a.colAll-a.expAll+a.lIn-a.lPrin),(a.colAll+a.lIn-a.lPrin)>=a.expAll?'t-good':'t-bad')}</div>
      ${ms.map(tableHTML).join('')}`}
   if(archivedBefore()&&monthInfo(r.month).to<archivedBefore())return head+`<div class="card pad"><div class="row"><div class="field" style="width:190px"><label for="rm">Reporting month</label><input id="rm" type="month" data-bind="rpt.month" value="${esc(r.month)}" max="${todayKey().slice(0,7)}"></div></div></div>`+note;
   const G=monthGroups(r.month);const tabs=['is','bs','cf','sce','ar','days','notes'];
@@ -1268,7 +1279,7 @@ const pettyBal=()=>r2((S.carry?S.carry.pettyBal||0:0)+pettyList().reduce((a,e)=>
 const wfBal=()=>r2((S.carry?S.carry.wfBal||0:0)+wfList().reduce((a,e)=>a+(e.type==='fund'?e.amount:e.type==='return'?-e.amount:0),0));
 const fundOwner=(from,to)=>r2([...pettyList(),...wfList()].filter(e=>e.type==='fund'&&e.source==='Owner'&&e.date>=from&&e.date<=to).reduce((a,e)=>a+e.amount,0));
 const pettyAlert=()=>S.business.pettyAlert==null?500:Number(S.business.pettyAlert)||0;
-const PETTY_CATS=ACCOUNTS.filter(a=>a!=='Tax Remittance'&&a!=='Merchandise Inventory');
+const PETTY_CATS=ACCOUNTS.filter(a=>a!=='Tax Remittance'&&a!=='Merchandise Inventory'&&a!=='Interest Expense');
 function bookRows(list,plus,minus,base){let b=base||0;
   return list.map((e,i)=>({e,i})).sort((x,y)=>x.e.date.localeCompare(y.e.date)||x.i-y.i).map(({e})=>{
     if(plus.includes(e.type))b=r2(b+e.amount);else if(minus.includes(e.type))b=r2(b-e.amount);return {e,bal:b}})}
@@ -1371,7 +1382,7 @@ const pettyForms={
  pettyset(fd){S.business.pettyAlert=Math.max(0,r2(fd.get('level')));save();closeModal();render();toast('Alert level saved')}
 };
 function fixBooks(){
-  S.petty=S.petty||[];S.xfer=S.xfer||[];S.xaccts=S.xaccts||[];S.bdep=S.bdep||[];
+  S.petty=S.petty||[];S.xfer=S.xfer||[];S.xaccts=S.xaccts||[];S.bdep=S.bdep||[];S.loans=S.loans||[];
   if(!S.wf){S.wf=[];const keep=[];
     S.petty.forEach(e=>{if(e.type==='fund'||e.type==='return'||e.type==='count')S.wf.push(e);else{delete e.tid;keep.push(e)}});S.petty=keep;
     const sp=r2(keep.reduce((a,e)=>a+e.amount,0));
@@ -1464,9 +1475,9 @@ const xferForms={
 const bdepList=()=>(S.bdep=S.bdep||[]);
 const isCashAcct=a=>a.type===XTYPES[0];
 function acctFlow(a,asof){const ok=d=>!asof||d<=asof;
-  const recv=r2(xferList().filter(t=>t.accountId===a.id&&xDone(t)&&ok(t.date)).reduce((q,t)=>q+t.amount,0)+bdepList().filter(b=>b.toId===a.id&&ok(b.date)).reduce((q,b)=>q+b.amount,0));
-  const out=r2(wfList().filter(e=>e.type==='fund'&&e.source==='Account'&&e.accountId===a.id&&ok(e.date)).reduce((q,e)=>q+e.amount,0)+bdepList().filter(b=>b.fromId===a.id&&ok(b.date)).reduce((q,b)=>q+r2(b.expected-b.kept),0));
-  const KA=(carryOn(asof)&&S.carry.acct&&S.carry.acct[a.id])||{recv:0,out:0};
+  const recv=r2(xferList().filter(t=>t.accountId===a.id&&xDone(t)&&ok(t.date)).reduce((q,t)=>q+t.amount,0)+bdepList().filter(b=>b.toId===a.id&&ok(b.date)).reduce((q,b)=>q+b.amount,0)+loansList().filter(l=>l.type==='adv'&&l.mode==='cash'&&l.toId===a.id&&ok(l.date)).reduce((q,l)=>q+l.amount,0));
+  const out=r2(wfList().filter(e=>e.type==='fund'&&e.source==='Account'&&e.accountId===a.id&&ok(e.date)).reduce((q,e)=>q+e.amount,0)+bdepList().filter(b=>b.fromId===a.id&&ok(b.date)).reduce((q,b)=>q+r2(b.expected-b.kept),0)+loansList().filter(l=>l.type==='repay'&&l.fromId===a.id&&ok(l.date)).reduce((q,l)=>q+(l.principal||0)+(l.interest||0),0));
+  const KA0=(carryOn(asof)&&S.carry.acct&&S.carry.acct[a.id])||{recv:0,out:0};const LCK=S.business.loanCarry,LK=(LCK&&(!asof||asof>=LCK.cut)&&LCK.acct&&LCK.acct[a.id])||{recv:0,out:0};const KA={recv:r2(KA0.recv+LK.recv),out:r2(KA0.out+LK.out)};
   return {recv:r2(recv+KA.recv),out:r2(out+KA.out),bal:r2(recv+KA.recv-out-KA.out)}}
 const acctBal=(a,asof)=>acctFlow(a,asof).bal;
 const cashOnHand=asof=>r2(xAccts().filter(isCashAcct).reduce((q,a)=>q+acctBal(a,asof),0));
@@ -1507,7 +1518,7 @@ const bankForms={
 };
 /* ============ Cloud sync (Supabase) ============ */
 const CKEY='laundrypos.cloud',SKEY='laundrypos.snap';
-const CCOLL=['operators','customers','products','services','orders','expenses','replenishments','petty','wf','xfer','xaccts','bdep'];
+const CCOLL=['operators','customers','products','services','orders','expenses','replenishments','petty','wf','xfer','xaccts','bdep','loans'];
 const cloud={cfg:null,snap:null,state:'off',err:'',busy:false,again:false,t:null,timer:null,lastSeen:'',lastFull:0,lastOk:0,pend:0,seq:0};
 const cjs=v=>JSON.stringify(v);
 const csort=v=>Array.isArray(v)?v.map(csort):v&&typeof v==='object'?Object.keys(v).sort().reduce((o,k)=>{o[k]=csort(v[k]);return o},{}):v;
@@ -1747,6 +1758,141 @@ function archiveCard(){const K=S.carry;
   return `<div class="card pad" style="display:flex;flex-direction:column;gap:14px"><div class="sect"><div class="si">${ic('reports')}</div><div><h2>Yearly archive</h2><div class="muted">Export old months to a file, then clear them from the live data so the database stays small. Balances are carried forward.</div></div></div>
    <div class="row between"><div class="small muted">${K?'Archived up to '+fmtD(K.cut)+' (before that date). Reports for those months are in your archive files.':'Nothing archived yet.'}</div><button class="btn pri" data-act="arcOpen">${ic('reports')} Archive old months</button></div>
    <div class="small muted">Only fully settled orders and cleared cash records are archived. Keep every archive file safe: it is the only copy of those records afterwards.</div></div>`}
+/* ============ Loans Payable (admin) ============ */
+const loansList=()=>(S.loans=S.loans||[]);
+const loanCfg=()=>(S.business.loanCfg=S.business.loanCfg||{lender:'',rate:0,monthly:0,dueDay:'',note:''});
+function loanAgg(from,to){let adv=0,cashIn=0,asset=0,prin=0,int=0;
+  loansList().forEach(l=>{if(l.date<from||l.date>to)return;
+    if(l.type==='adv'){adv+=l.amount;if(l.mode==='asset')asset+=l.amount;else cashIn+=l.amount}
+    else if(l.type==='repay'){prin+=l.principal||0;int+=l.interest||0}});
+  return {adv:r2(adv),cashIn:r2(cashIn),asset:r2(asset),prin:r2(prin),int:r2(int)}}
+const loanTotals=()=>loanAgg('0000-00-00','9999-12-31');
+const loanOwed=()=>{const t=loanTotals();return r2(t.adv-t.prin)};
+function syncExpLoan(eid,by,date,amount,desc){
+  const L=loansList(),i=L.findIndex(x=>x.expenseId===eid&&x.type==='adv');
+  if(by==='lender'){const d='Paid by lender: '+desc;
+    if(i>=0)Object.assign(L[i],{date,amount,desc:d});else L.push({id:uid('ln'),type:'adv',mode:'exp',date,amount,desc:d,ref:'',expenseId:eid,by:me().id})}
+  else if(i>=0)L.splice(i,1)}
+function loanRows(){let b=0;
+  return loansList().map((e,i)=>({e,i})).sort((x,y)=>x.e.date.localeCompare(y.e.date)||x.i-y.i).map(({e})=>{
+    b=r2(b+(e.type==='adv'?e.amount:-(e.principal||0)));return {e,bal:b}})}
+function filteredLoans(){const st=ui.loan,q=st.q.trim().toLowerCase();
+  return loanRows().filter(r=>inPeriod(st.P,r.e.date)&&((r.e.desc||'')+' '+(r.e.ref||'')+' '+(r.e.mode||'')+' '+(r.e.type||'')).toLowerCase().includes(q)).reverse()}
+function loanNextDue(c){const d=Number(c.dueDay);if(!(d>=1&&d<=31))return null;
+  const n=new Date(),mk=(y,m)=>new Date(y,m,Math.min(d,new Date(y,m+1,0).getDate()));
+  let t=mk(n.getFullYear(),n.getMonth());if(dkey(t)<dkey(n))t=mk(n.getFullYear(),n.getMonth()+1);return t}
+V.loans={
+ html(){const t=loanTotals(),owed=r2(t.adv-t.prin),c=loanCfg();
+  const by={cash:0,exp:0,asset:0};loansList().forEach(l=>{if(l.type==='adv')by[l.mode]=r2((by[l.mode]||0)+l.amount)});
+  const due=loanNextDue(c),ln=c.lender?esc(c.lender):'the lender';
+  return `<div class="row between"><div><h2 style="font-size:24px">Loans Payable</h2><div class="muted">What the shop owes ${ln}: advances received, repayments made and the balance still owed. Admin only.</div></div>
+   <div class="row" style="gap:8px"><button class="btn pri" data-act="addAdv">${ic('plus')} Record Advance</button><button class="btn" data-act="addRepay">${ic('bank')} Record Repayment</button><button class="btn" data-act="loanTerms">${ic('settings')} Loan Terms</button>${loansList().length?`<button class="btn dng" data-act="loanClose">${ic('check')} Close out loan</button>`:''}</div></div>
+  ${closedLoanCard()}
+  <div class="stats">${bcard(owed>0?'warn':'good','bank','Outstanding balance',peso(owed),owed>0?'Still owed to '+ln:'Fully repaid',owed>0?'t-warn':'t-good')}${bcard('info','plus','Total advanced',peso(t.adv),'Everything the lender funded')}${bcard('good','check','Principal repaid',peso(t.prin),'Not an expense','t-good')}${bcard('bad','expenses','Interest paid',peso(t.int),'Recorded as an expense','t-bad')}${bcard('acc','clock','Next due',due?fmtD(due):'—',c.monthly>0&&due?peso(c.monthly)+' monthly':'Set the schedule in Loan Terms')}</div>
+  <div class="grid2" style="align-items:start">
+   <div class="card pad"><h3>Loan terms</h3><div class="list" style="margin-top:8px">
+    <div class="row between small"><span class="muted">Lender</span><b>${c.lender?esc(c.lender):'Not set'}</b></div>
+    <div class="row between small"><span class="muted">Interest</span><b>${Number(c.rate)>0?esc(c.rate)+'% per year':'No interest'}</b></div>
+    <div class="row between small"><span class="muted">Monthly repayment</span><b>${Number(c.monthly)>0?peso(c.monthly):'Not set'}</b></div>
+    <div class="row between small"><span class="muted">Due day of the month</span><b>${c.dueDay?esc(c.dueDay):'Not set'}</b></div>
+    ${c.note?`<div class="small muted">${esc(c.note)}</div>`:''}</div></div>
+   <div class="card pad"><h3>How the advances were used</h3><div class="list" style="margin-top:8px">
+    <div class="row between small"><span>Cash given to the shop</span><b class="num">${peso(by.cash)}</b></div>
+    <div class="row between small"><span>Expenses paid directly by the lender</span><b class="num">${peso(by.exp)}</b></div>
+    <div class="row between small"><span>Equipment and fixtures paid directly</span><b class="num">${peso(by.asset)}</b></div></div>
+    <div class="small muted" style="margin-top:8px">Compare the balance owed with your own record of what you are owed. They should match.</div></div></div>
+  ${periodBar('loan',ui.loan.P,[['all','All'],['today','Today'],['month','This Month'],['range','Date Range'],['year','Year'],['q1','1st Quarter'],['q2','2nd Quarter'],['q3','3rd Quarter'],['q4','4th Quarter']])}
+  <div class="row">${searchBox('loan.q','Search details or reference…',ui.loan.q)}</div>
+  <div class="card"><div class="tablebox" style="max-height:620px;overflow:auto"><table style="min-width:980px"><thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Ref</th><th class="r">Advanced</th><th class="r">Principal repaid</th><th class="r">Interest</th><th class="r">Balance owed</th><th>Actions</th></tr></thead><tbody id="list">${this.list()}</tbody></table></div></div>`},
+ list(){const l=filteredLoans();if(!l.length)return '<tr><td colspan="9" class="empty">No loan entries in this period. Use Record Advance when the lender funds the shop.</td></tr>';
+  return l.map(({e,bal})=>{const adv=e.type==='adv';
+   const pill=adv?(e.mode==='cash'?'<span class="pill good">Cash advance</span>':e.mode==='exp'?'<span class="pill info">Expense paid by lender</span>':'<span class="pill acc">Equipment / fixture</span>'):'<span class="pill warn">Repayment</span>';
+   const sub=adv?(e.mode==='cash'&&e.toName?'Received into '+esc(e.toName)+' · ':''):(e.fromName?'Paid from '+esc(e.fromName)+' · ':'');
+   return `<tr><td class="muted">${fmtD(e.date)}</td><td>${pill}</td><td>${esc(e.desc||'')}<div class="small muted">${sub}By ${byName(e)}</div></td><td class="mono">${esc(e.ref||'—')}</td>
+    <td class="r num t-good">${adv?peso(e.amount):''}</td><td class="r num">${adv?'':peso(e.principal||0)}</td><td class="r num t-bad">${!adv&&e.interest?peso(e.interest):''}</td><td class="r num bold">${peso(bal)}</td>
+    <td><button class="icon-btn dng" data-act="delLoan" data-id="${e.id}" aria-label="Delete">${ic('trash')}</button></td></tr>`}).join('')}
+};
+function loanAdvForm(){const ac=xAccts().filter(a=>a.active!==false);
+  formModal('Record lender advance','ladv','',`<div class="note" style="background:var(--info-bg);color:var(--info)">Record what the lender funded for the shop. Every advance adds to the amount the shop owes.</div>
+   ${fld('What was funded',`<select name="mode" id="lmode">${selOpts([['cash','Cash given to the shop'],['exp','An expense the lender paid directly (supplies, rent, etc.)'],['asset','Equipment or fixtures the lender paid for (tablet, signage, door…)']],'cash')}</select>`)}
+   ${fld('Description',`<input name="desc" required placeholder="e.g. Tablet and printer, detergent stock, cash for the shop">`)}
+   <div class="grid2">${fld('Date',`<input name="date" type="date" required value="${dkey(new Date())}">`)}${fld('Amount ('+sym()+')',`<input name="amount" type="number" step="0.01" min="0.01" required>`)}</div>
+   <div class="grid2">${fld('Receipt / transfer ref # <span>(optional)</span>',`<input name="ref">`)}
+    ${fld('Cash received into <span>(optional)</span>',`<select name="toacct">${selOpts([['','Not tracked in an account'],...ac.map(a=>[a.id,a.name+' · '+a.type])],'')}</select>`,'data-lfor="cash"')}
+    ${fld('Expense account',`<select name="account">${selOpts(ACCOUNTS,'Supplies')}</select>`,'data-lfor="exp" hidden')}</div>
+   <div class="small muted">Expense advances are also added to the Expense Ledger. Equipment is shown on the balance sheet at cost. The shop’s own cash does not go down for items the lender paid.</div>`,'Record advance')}
+function loanRepForm(){const ac=xAccts().filter(a=>a.active!==false),c=loanCfg(),owed=loanOwed();
+  const pre=Number(c.monthly)>0?Math.min(Number(c.monthly),owed):'';
+  formModal('Record loan repayment','lrep','',`<div class="note" style="background:var(--info-bg);color:var(--info)">Balance owed: <b>${peso(owed)}</b>. Principal reduces the loan and is not an expense. Interest, if any, is added to the Expense Ledger.</div>
+   <div class="grid2">${fld('Date',`<input name="date" type="date" required value="${dkey(new Date())}">`)}${fld('Paid from',`<select name="fromacct">${selOpts([['','Not tracked in an account'],...ac.map(a=>[a.id,a.name+' · balance '+peso(acctBal(a))])],'')}</select>`)}</div>
+   <div class="grid2">${fld('Principal ('+sym()+')',`<input name="principal" type="number" step="0.01" min="0" required value="${pre}">`)}${fld('Interest ('+sym()+')',`<input name="interest" type="number" step="0.01" min="0" value="0">`)}</div>
+   ${fld('Reference / note <span>(optional)</span>',`<input name="ref" placeholder="e.g. Transfer ref, month covered">`)}`,'Record repayment')}
+function loanTermsForm(){const c=loanCfg();
+  formModal('Loan terms','lterms','',`${fld('Lender name',`<input name="lender" value="${esc(c.lender)}" placeholder="Who funded the shop">`)}
+   <div class="grid3">${fld('Interest % per year',`<input name="rate" type="number" step="0.01" min="0" value="${Number(c.rate)||0}">`)}${fld('Monthly repayment ('+sym()+')',`<input name="monthly" type="number" step="0.01" min="0" value="${Number(c.monthly)||0}">`)}${fld('Due day of month',`<input name="dueDay" type="number" min="1" max="31" value="${esc(c.dueDay)}">`)}</div>
+   ${fld('Agreement note <span>(optional)</span>',`<input name="note" value="${esc(c.note||'')}">`)}
+   <div class="small muted">These details are shown as a reminder. A repayment only counts once you record it.</div>`,'Save terms')}
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.id==='lmode'&&t.form){t.form.querySelectorAll('[data-lfor]').forEach(x=>{x.hidden=x.dataset.lfor!==t.value})}});
+const loanActs={
+ addAdv(){if(isAdmin())loanAdvForm()},addRepay(){if(isAdmin())loanRepForm()},loanTerms(){if(isAdmin())loanTermsForm()},
+ delLoan(el){if(!isAdmin())return;const l=loansList().find(x=>x.id===el.dataset.id);if(!l)return;const adv=l.type==='adv';
+  if(adv&&loanOwed()-l.amount<-0.004){toast('Delete the repayments first. Removing this advance would make the balance negative.',true);return}
+  confirmBox('Delete entry?',adv?'Delete this advance of <b>'+peso(l.amount)+'</b>? The balance owed goes down by that amount.'+(l.expenseId?' Its expense entry is removed too.':''):'Delete this repayment (principal <b>'+peso(l.principal||0)+'</b>'+(l.interest?', interest <b>'+peso(l.interest)+'</b>':'')+')? The balance owed goes back up.'+(l.expenseId?' Its interest expense is removed too.':''),'Delete',()=>{
+   if(l.expenseId)S.expenses=S.expenses.filter(x=>x.id!==l.expenseId);S.loans=loansList().filter(x=>x.id!==l.id);save();render();toast('Entry deleted')})}
+};
+
+function loanAggC(asof){const a=loanAgg('0000-00-00',asof),K=S.business.loanCarry;
+  if(K&&asof>=K.cut)['adv','cashIn','asset','prin','int'].forEach(k=>{a[k]=r2(a[k]+(K[k]||0))});return a}
+function closedLoanCard(){const K=S.business.loanCarry;if(!K)return '';
+  return `<div class="card pad"><div class="row between"><div><h3>${ic('check')} Previous loan closed out</h3><div class="small muted">${K.lender?esc(K.lender)+' · ':''}Fully repaid and cleared on ${fmtD(K.closedAt)}. Totals are kept for the financial statements.</div></div><div class="small num"><span class="muted">Advanced</span> <b>${peso(K.adv)}</b> · <span class="muted">Principal repaid</span> <b>${peso(K.prin)}</b> · <span class="muted">Interest</span> <b>${peso(K.int)}</b></div></div></div>`}
+function loanCloseInner(){const t=loanTotals(),L=ui.lcl,n=loansList().length;
+  const row=(l,v)=>`<tr><td>${l}</td><td class="r num">${v}</td></tr>`;
+  return `<div class="mh"><h2>Close out loan</h2><button class="icon-btn" data-act="closeModal" aria-label="Close">${ic('x')}</button></div>
+   <div class="mb"><div class="note" style="background:var(--info-bg);color:var(--info)">The loan is fully repaid. This saves every loan entry to a file, then clears them from the live data and from Supabase. The totals are kept for the financial statements, and the interest you paid stays in the Expense Ledger.</div>
+   <div class="tablebox"><table><thead><tr><th>Loan records to clear</th><th class="r">Amount</th></tr></thead><tbody>${row('Entries',n)}${row('Total advanced',peso(t.adv))}${row('Principal repaid',peso(t.prin))}${row('Interest paid',peso(t.int))}${row('Balance owed',peso(r2(t.adv-t.prin)))}</tbody></table></div>
+   ${L.saved?`<div class="note" style="background:var(--good-bg,var(--info-bg));color:var(--good,var(--info))">${ic('check')} Loan record file prepared. Make sure it is saved somewhere safe, then clear the entries.</div>
+    <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);font-weight:500"><input type="checkbox" data-lclchk="1" style="width:auto"> I saved the loan record file in a safe place</label>`:''}</div>
+   <div class="mf"><button class="btn" data-act="closeModal">Cancel</button><button class="btn${L.saved?'':' pri'}" data-act="loanSave">${ic('reports')} ${L.saved?'Download again':'1. Download loan record file'}</button>${L.saved?`<button class="btn dng solid" id="lclgo" data-act="loanClear" disabled>2. Clear ${n} loan entr${n===1?'y':'ies'}</button>`:''}</div>`}
+function loanCloseRender(){if(ui.lcl&&ui.lcl.el){const m=ui.lcl.el.querySelector('.modal');if(m)m.innerHTML=loanCloseInner()}}
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.lclchk!=null){const b=document.getElementById('lclgo');if(b)b.disabled=!t.checked}});
+Object.assign(loanActs,{
+ loanClose(){if(!isAdmin())return;if(!loansList().length){toast('There are no loan entries to clear.',true);return}
+  const owed=loanOwed();if(owed>0.004){toast('The loan still has a balance of '+peso(owed)+'. Record the remaining repayments first.',true);return}
+  ui.lcl={saved:false,sig:'',el:null};ui.lcl.el=openModal('<div></div>');loanCloseRender()},
+ async loanSave(){if(!isAdmin()||!ui.lcl)return;const t=loanTotals();
+  const f=JSON.stringify({app:'LaundryPOS-loans',version:1,created:new Date().toISOString(),business:S.business.name||'',terms:loanCfg(),totals:{...t,owed:r2(t.adv-t.prin)},entries:loansList()},null,1);
+  const ok=await saveFile('LaundryPOS-loan-closed-'+dkey(new Date())+'.json',f);if(ok){ui.lcl.saved=true;ui.lcl.sig=loansList().length+'|'+loanOwed();loanCloseRender()}},
+ loanClear(){if(!isAdmin()||!ui.lcl||!ui.lcl.saved)return;const cb=document.querySelector('[data-lclchk]');if(cb&&!cb.checked){toast('Tick the box to confirm the file is saved.',true);return}
+  const L=loansList();if(ui.lcl.sig!==L.length+'|'+loanOwed()){toast('The loan entries changed since the file was saved. Download it again.',true);ui.lcl.saved=false;loanCloseRender();return}
+  if(loanOwed()>0.004){toast('The loan still has a balance owed.',true);return}
+  const t=loanTotals(),old=S.business.loanCarry||{},c=loanCfg(),n=L.length;
+  const ac={};Object.keys(old.acct||{}).forEach(id=>{ac[id]={...old.acct[id]}});
+  const A=id=>(ac[id]=ac[id]||{recv:0,out:0});
+  L.forEach(l=>{if(l.type==='adv'&&l.mode==='cash'&&l.toId)A(l.toId).recv=r2(A(l.toId).recv+l.amount);if(l.type==='repay'&&l.fromId)A(l.fromId).out=r2(A(l.fromId).out+(l.principal||0)+(l.interest||0))});
+  const last=L.map(l=>l.date).sort().pop();
+  S.business.loanCarry={adv:r2((old.adv||0)+t.adv),cashIn:r2((old.cashIn||0)+t.cashIn),asset:r2((old.asset||0)+t.asset),prin:r2((old.prin||0)+t.prin),int:r2((old.int||0)+t.int),acct:ac,
+    cut:(old.cut&&old.cut>last)?old.cut:last,closedAt:new Date().toISOString(),lender:c.lender||old.lender||'',count:(old.count||0)+n};
+  S.loans=[];save();ui.lcl=null;closeModal();render();toast('Loan closed out · '+n+' entries cleared');
+  if(cloud.cfg)cCycle().then(()=>cPurge())}
+});
+const loanForms={
+ ladv(fd){if(!isAdmin())return;const a=r2(fd.get('amount'));if(!(a>0)){toast('Enter an amount.',true);return false}
+  const mode=fd.get('mode'),date=fd.get('date'),desc=fd.get('desc').trim(),ref=fd.get('ref').trim();
+  const l={id:uid('ln'),type:'adv',mode,date,amount:a,desc,ref,by:me().id};
+  if(mode==='cash'){const ac=xAccts().find(x=>x.id===fd.get('toacct'));if(ac){l.toId=ac.id;l.toName=ac.name}}
+  if(mode==='exp'){const eid=uid('exp');S.expenses.push({id:eid,date,desc,ref,account:fd.get('account'),source:'Manual',amount:a,by:me().id});l.expenseId=eid}
+  loansList().push(l);save();closeModal();render();toast('Advance recorded · '+peso(a)+' · balance owed '+peso(loanOwed()))},
+ lrep(fd){if(!isAdmin())return;const p=r2(fd.get('principal')),i=r2(fd.get('interest')||0),owed=loanOwed();
+  if(!(p>=0)||!(i>=0)||!(p+i>0)){toast('Enter a principal or interest amount.',true);return false}
+  if(p>owed+0.004){toast('Principal cannot be more than the balance owed ('+peso(owed)+').',true);return false}
+  const date=fd.get('date'),ac=xAccts().find(x=>x.id===fd.get('fromacct')),c=loanCfg(),ref=fd.get('ref').trim();
+  const l={id:uid('ln'),type:'repay',date,principal:p,interest:i,ref,desc:'Loan repayment'+(c.lender?' to '+c.lender:''),by:me().id};
+  if(ac){l.fromId=ac.id;l.fromName=ac.name}
+  if(i>0){const eid=uid('exp');S.expenses.push({id:eid,date,desc:'Loan interest'+(c.lender?' – '+c.lender:''),ref,account:'Interest Expense',source:'Loan Repayment',amount:i,by:me().id});l.expenseId=eid}
+  loansList().push(l);save();closeModal();render();toast('Repayment recorded · principal '+peso(p)+(i?' · interest '+peso(i):'')+' · balance owed '+peso(loanOwed()))},
+ lterms(fd){if(!isAdmin())return;const c=loanCfg();c.lender=fd.get('lender').trim();c.rate=Math.max(0,Number(fd.get('rate'))||0);c.monthly=Math.max(0,r2(fd.get('monthly')));
+  c.dueDay=fd.get('dueDay')?Math.min(31,Math.max(1,Math.floor(Number(fd.get('dueDay'))||1))):'';c.note=fd.get('note').trim();save();closeModal();render();toast('Loan terms saved')}
+};
 /* ============ Receipt (58mm) ============ */
 const C39={'0':'nnnwwnwnn','1':'wnnwnnnnw','2':'nnwwnnnnw','3':'wnwwnnnnn','4':'nnnwwnnnw','5':'wnnwwnnnn','6':'nnwwwnnnn','7':'nnnwnnwnw','8':'wnnwnnwnn','9':'nnwwnnwnn','A':'wnnnnwnnw','B':'nnwnnwnnw','C':'wnwnnwnnn','D':'nnnnwwnnw','E':'wnnnwwnnn','F':'nnwnwwnnn','G':'nnnnnwwnw','H':'wnnnnwwnn','I':'nnwnnwwnn','J':'nnnnwwwnn','K':'wnnnnnnww','L':'nnwnnnnww','M':'wnwnnnnwn','N':'nnnnwnnww','O':'wnnnwnnwn','P':'nnwnwnnwn','Q':'nnnnnnwww','R':'wnnnnnwwn','S':'nnwnnnwwn','T':'nnnnwnwwn','U':'wwnnnnnnw','V':'nwwnnnnnw','W':'wwwnnnnnn','X':'nwnnwnnnw','Y':'wwnnwnnnn','Z':'nwwnwnnnn','-':'nwnnnnwnw','.':'wwnnnnwnn',' ':'nwwnnnwnn','*':'nwnnwnwnn'};
 function bars(txt){ // returns [{x,w}] in module units for Code 39
@@ -1883,7 +2029,7 @@ function openPop(btn){
 
 /* ============ actions ============ */
 const acts={
- ...rcptActs,...pettyActs,...xferActs,...bankActs,...cloudActs,...arcActs,
+ ...rcptActs,...pettyActs,...xferActs,...bankActs,...cloudActs,...arcActs,...loanActs,
  ...rptActs,
  ...coActs,
  backup(){const t=new Date();saveFile("LaundryPOS-backup-"+dkey(t)+".json",JSON.stringify(S))},
@@ -1919,9 +2065,9 @@ const acts={
  addMat(el){const d=document.createElement('div');d.innerHTML=matRow(null);$('#matrows').appendChild(d.firstChild)},
  rmMat(el){el.closest('.row').remove()},
  addExpense(){expForm()},editExpense(el){expForm(el.dataset.id)},
- delExpense(el){const e=S.expenses.find(x=>x.id===el.dataset.id);if(pettyList().some(x=>x.expenseId===e.id&&x.tid)){toast('This petty cash payout is part of a cash transfer and cannot be deleted.',true);return}confirmBox('Delete expense?','Delete <b>'+esc(e.desc)+'</b> ('+peso(e.amount)+')?'+(e.source!=='Manual'?' The stock that was added stays on hand.':''),'Delete',()=>{S.expenses=S.expenses.filter(x=>x.id!==e.id);S.petty=pettyList().filter(x=>x.expenseId!==e.id);S.replenishments.forEach(r=>{if(r.expenseId===e.id)r.expenseId=''});save();render();toast('Expense deleted')})},
+ delExpense(el){const e=S.expenses.find(x=>x.id===el.dataset.id);if(pettyList().some(x=>x.expenseId===e.id&&x.tid)){toast('This petty cash payout is part of a cash transfer and cannot be deleted.',true);return}if(loansList().some(x=>x.expenseId===e.id&&x.type==='repay')){toast('This is the interest of a loan repayment. Delete it from Loans Payable.',true);return}confirmBox('Delete expense?','Delete <b>'+esc(e.desc)+'</b> ('+peso(e.amount)+')?'+(e.source!=='Manual'?' The stock that was added stays on hand.':''),'Delete',()=>{S.expenses=S.expenses.filter(x=>x.id!==e.id);S.loans=loansList().filter(x=>!(x.expenseId===e.id&&x.type==='adv'));S.petty=pettyList().filter(x=>x.expenseId!==e.id);S.replenishments.forEach(r=>{if(r.expenseId===e.id)r.expenseId=''});save();render();toast('Expense deleted')})},
  addRepl(){replForm()},
- delRepl(el){const r=S.replenishments.find(x=>x.id===el.dataset.id);const p=prod(r.productId);confirmBox('Delete replenishment?','This removes the log, takes <b>'+r.qty+'</b> back off '+esc(p?p.name:'the product')+' and deletes its expense entry.','Delete',()=>{if(p)p.stock=Math.max(0,p.stock-r.qty);S.expenses=S.expenses.filter(e=>e.id!==r.expenseId);S.replenishments=S.replenishments.filter(x=>x.id!==r.id);save();render();toast('Replenishment deleted')})},
+ delRepl(el){const r=S.replenishments.find(x=>x.id===el.dataset.id);const p=prod(r.productId);confirmBox('Delete replenishment?','This removes the log, takes <b>'+r.qty+'</b> back off '+esc(p?p.name:'the product')+' and deletes its expense entry.','Delete',()=>{if(p)p.stock=Math.max(0,p.stock-r.qty);S.expenses=S.expenses.filter(e=>e.id!==r.expenseId);S.loans=loansList().filter(l=>!(l.expenseId===r.expenseId&&l.type==='adv'));S.replenishments=S.replenishments.filter(x=>x.id!==r.id);save();render();toast('Replenishment deleted')})},
  addCust(){custForm()},editCust(el){closePop();custForm(el.dataset.id)},
  delCust(el){closePop();const c=cust(el.dataset.id);confirmBox('Delete customer?','Delete <b>'+esc(c.name)+'</b>? Their past orders keep the name but are no longer linked to the registry.','Delete',()=>{S.customers=S.customers.filter(x=>x.id!==c.id);S.orders.forEach(o=>{if(o.customerId===c.id){o.customerId='walkin';o.guest=c.name}});if(ui.pos.cust===c.id)ui.pos.cust='walkin';save();render();toast('Customer deleted')})},
  addOp(){opForm()},editOp(el){closePop();opForm(el.dataset.id)},
@@ -1935,7 +2081,7 @@ const acts={
 
 /* ============ forms ============ */
 const forms={
- ...pettyForms,...xferForms,...bankForms,...cloudForms,
+ ...pettyForms,...xferForms,...bankForms,...cloudForms,...loanForms,
  async login(fd){const u=String(fd.get('u')).trim().toLowerCase(),h=await hash(String(fd.get('p')));
   const o=S.operators.find(x=>x.username.toLowerCase()===u);
   if(!o||o.pass!==h){ui.loginErr='Wrong username or password.';render();return false}
@@ -1955,11 +2101,13 @@ const forms={
   const d={name:fd.get('name').trim(),type:fd.get('type'),price:r2(fd.get('price')),baseKg:+fd.get('baseKg')||1,color:fd.get('color')||COLORS[1],materials:mats};
   if(id)Object.assign(svc(id),d);else S.services.push({id:uid('svc'),...d});save();closeModal();render();toast('Service saved')},
  exp(fd,id){const d={desc:fd.get('desc').trim(),date:fd.get('date'),amount:r2(fd.get('amount')),account:fd.get('account'),ref:fd.get('ref').trim()};
-  if(id)Object.assign(S.expenses.find(x=>x.id===id),d);else S.expenses.push({id:uid('exp'),...d,source:'Manual',by:me().id});save();closeModal();render();toast('Expense saved')},
+  const eid=id||uid('exp');
+  if(id)Object.assign(S.expenses.find(x=>x.id===id),d);else S.expenses.push({id:eid,...d,source:'Manual',by:me().id});
+  syncExpLoan(eid,fd.get('paidBy'),d.date,d.amount,d.desc);save();closeModal();render();toast('Expense saved')},
  repl(fd){const p=prod(fd.get('productId'));const qty=Math.max(1,Math.floor(+fd.get('qty')||0)),unit=r2(fd.get('unit'));const eid=uid('exp');
   p.stock=r2(p.stock+qty);p.cost=unit;
   S.expenses.push({id:eid,date:fd.get('date'),desc:'Inventory replenishment – '+p.name,ref:'',account:'Merchandise Inventory',source:'Replenishment',amount:r2(qty*unit),by:me().id});
-  S.replenishments.push({id:uid('rep'),productId:p.id,name:p.name,supplier:fd.get('supplier').trim(),qty,unit,date:fd.get('date'),expenseId:eid});save();closeModal();render();toast('Stock added: '+qty+' × '+p.name)},
+  S.replenishments.push({id:uid('rep'),productId:p.id,name:p.name,supplier:fd.get('supplier').trim(),qty,unit,date:fd.get('date'),expenseId:eid});syncExpLoan(eid,fd.get('paidBy'),fd.get('date'),r2(qty*unit),p.name+' x '+qty);save();closeModal();render();toast('Stock added: '+qty+' × '+p.name)},
  cust(fd,id){const d={name:fd.get('name').trim(),email:fd.get('email').trim(),phone:fd.get('phone').trim(),tin:fd.get('tin').trim(),address:fd.get('address').trim()};
   if(id)Object.assign(cust(id),d);else{const c={id:nextCustId(),...d};S.customers.push(c);if(ui.view==='pos'){ui.pos.cust=c.id;ui.pos.custText=c.name}}save();closeModal();render();toast('Customer saved')},
  async op(fd,id){const un=fd.get('username').trim().toLowerCase();if(S.operators.some(o=>o.username.toLowerCase()===un&&o.id!==id)){toast('That username is taken.',true);return false}
